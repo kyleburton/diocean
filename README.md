@@ -1,4 +1,80 @@
 diocean
 =======
 
-Digital Ocean Command Line API Tool
+Digital Ocean API Command Line Client
+
+# Roadmap / *TODO*
+
+Documentation: both a basic manual and help text for the application (scrape some of this from the on-line html guide?).
+
+Factor the HTTP Api into a re-useable library, separate the command line interface and formatting of results into a separate module.  The command line interface deals with configuration, input and output.  The light-weight api abstracts the HTTP interface.
+
+Support json output in addition to tab delimited output.  This would be useful in conjunction with tools like "jq":http://stedolan.github.io/jq/.
+
+### API Support
+
+* [DONE] Support a -wait flag for all operations that return an event_id
+
+* Droplets
+** [DONE] Show All Active Droplets
+** [DONE] New Droplet
+** [DONE] Show Droplet (sans backups and snapshots)
+** [*TODO*] Show Droplet: Backups
+** [*TODO*] Show Droplet: Snapshots
+** [DONE] Reboot Droplet
+** [DONE] Power Cycle Droplet
+** [DONE] Shut Down Droplet
+** [DONE] Power Off
+** [DONE] Power On
+** [DONE] Reset Root Password
+** [DONE] Resize Droplet
+** [DONE] Take a Snapshot
+** [*TODO*] Restore Droplet
+** [*TODO*] Rebuild Droplet
+** [*TODO*] Rename Droplet
+** [DONE] Destroy Droplet
+
+* Regions
+** [*TODO*] All Regions
+
+* Images
+** [DONE] All Images
+** [DONE] Show Image
+** [DONE] Destroy Image
+** [*TODO*] Transfer Image
+
+* SSH Keys
+** [*TODO*] All SSH Keys
+** [*TODO*] Add SSH Keys
+** [*TODO*] Show SSH Keys
+** [*TODO*] Edit SSH Keys
+** [*TODO*] Destroy SSH Keys
+
+* Sizes
+** [DONE] All Sizes
+
+* Domains
+** [*TODO*] All Domains
+** [*TODO*] New Domain
+** [*TODO*] Domain Show
+** [*TODO*] Destroy Domain
+** [*TODO*] All Domain Records
+** [*TODO*] New Domain Record
+** [*TODO*] Show Domain Record
+** [*TODO*] Edit Domain Record
+** [*TODO*] Destroy Domain Record
+
+* Events
+* DONE Show Event
+* DONE Wait For Event (percentage=100)
+
+### Roadmap:
+
+* re-implement DoDropletsLsDroplet using structs
+* implement 'events wait :event_id'
+
+### References
+
+* http://blog.equanimity.nl/blog/2013/05/29/a-beginners-guide-to-erlang/
+* https://developers.digitalocean.com/sizes/
+* https://developers.digitalocean.com/images/
