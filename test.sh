@@ -26,7 +26,8 @@ EVENT_ID=$(tail -n 1 new.output | cut -f 5)
 ./diocean $VERBOSE events wait $EVENT_ID
 
 # destroy the droplet
-./diocean $VERBOSE droplets destroy 1390159 false 2>&1 | tee destroy.output
+# get the droplet ID from the previous create 
+./diocean $VERBOSE -w droplets destroy 1390159 false 2>&1 | tee destroy.output
 
 # event_id
 # 20770212
