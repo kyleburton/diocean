@@ -3,35 +3,35 @@ diocean
 
 Digital Ocean API Command Line Client
 
-> diocean <command> [arg1 [arg2 ..]] 
->   Commands:
->     sizes	ls
->     droplets	ls	:dropletId
->     droplets	show	:dropletId
->     droplets	reboot	:droplet_id
->     droplets	power-cycle	:droplet_id
->     droplets	shut-down	:droplet_id
->     droplets	shutdown	:droplet_id
->     droplets	power-off	:droplet_id
->     droplets	poweroff	:droplet_id
->     droplets	power-on	:droplet_id
->     droplets	poweron	:droplet_id
->     droplets	password-reset	:droplet_id
->     droplets	resize	:droplet_id	:size
->     droplets	snapshot	:droplet_id	:name
->     droplets	snapshot	:droplet_id
->     droplets	new	:name	:size	:image	:region	:ssh_key_ids	:private_networking	:backups_enabled
->     droplets	destroy	:droplet_id	:scrub_data
->     droplets	ls
->     images	ls
->     images	show	:image_id
->     images	destroy	:image_id
->     events	show	:event_id
->     events	wait	:event_id
->     regions	ls
->     ssh-keys	ls
->     ssh	fix-known-hosts
->     help
+    diocean <command> [arg1 [arg2 ..]] 
+      Commands:
+        sizes	ls
+        droplets	ls	:dropletId
+        droplets	show	:dropletId
+        droplets	reboot	:droplet_id
+        droplets	power-cycle	:droplet_id
+        droplets	shut-down	:droplet_id
+        droplets	shutdown	:droplet_id
+        droplets	power-off	:droplet_id
+        droplets	poweroff	:droplet_id
+        droplets	power-on	:droplet_id
+        droplets	poweron	:droplet_id
+        droplets	password-reset	:droplet_id
+        droplets	resize	:droplet_id	:size
+        droplets	snapshot	:droplet_id	:name
+        droplets	snapshot	:droplet_id
+        droplets	new	:name	:size	:image	:region	:ssh_key_ids	:private_networking	:backups_enabled
+        droplets	destroy	:droplet_id	:scrub_data
+        droplets	ls
+        images	ls
+        images	show	:image_id
+        images	destroy	:image_id
+        events	show	:event_id
+        events	wait	:event_id
+        regions	ls
+        ssh-keys	ls
+        ssh	fix-known-hosts
+        help
 
 # Roadmap / *TODO*
 
