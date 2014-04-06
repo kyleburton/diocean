@@ -5,11 +5,11 @@ Digital Ocean API Command Line Client
 
 # Roadmap / *TODO*
 
-Documentation: both a basic manual and help text for the application (scrape some of this from the on-line html guide?).
+Documentation: both a basic manual and help text for the application (link back to the on-line API documentation).
 
 Factor the HTTP Api into a re-useable library, separate the command line interface and formatting of results into a separate module.  The command line interface deals with configuration, input and output.  The light-weight api abstracts the HTTP interface.
 
-Support json output in addition to tab delimited output.  This would be useful in conjunction with tools like "jq":http://stedolan.github.io/jq/.
+Support json output in addition to tab delimited output.  This would be useful in conjunction with tools like [jq](http://stedolan.github.io/jq/).
 
 ### API Support
 
