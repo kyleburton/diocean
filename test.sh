@@ -2,7 +2,7 @@
 set -eux
 VERBOSE=""
 
-# go run pkg/diocean/main.go regions ls
+# ./diocean regions ls
 # id      name    slug
 # 3       San Francisco 1 sfo1
 # 4       New York 2      nyc2
@@ -12,28 +12,28 @@ VERBOSE=""
 #REGION=nyc2
 REGION=sfo1
 
-go run pkg/diocean/main.go $VERBOSE droplets new test1 512mb ubuntu-13-10-x64 $REGION 20848 false false 2>&1 | tee new.output
+./diocean $VERBOSE droplets new test1 512mb ubuntu-13-10-x64 $REGION 20848 false false 2>&1 | tee new.output
 
 # id      name    image_id        size_id event_id
 # 1413427 test1   1505699 66      20770146
 EVENT_ID=$(tail -n 1 new.output | cut -f 5)
 
 # grab the event and the droplet_id
-go run pkg/diocean/main.go $VERBOSE droplets ls
+./diocean $VERBOSE droplets ls
 
 
 # wait for the droplet to spin up
-go run pkg/diocean/main.go $VERBOSE events wait $EVENT_ID
+./diocean $VERBOSE events wait $EVENT_ID
 
 # destroy the droplet
-go run pkg/diocean/main.go $VERBOSE droplets destroy 1390159 false 2>&1 | tee destroy.output
+./diocean $VERBOSE droplets destroy 1390159 false 2>&1 | tee destroy.output
 
 # event_id
 # 20770212
 EVENT_ID=$(tail -n 1 destroy.output)
 
 # wait for the destroy to complete
-go run pkg/diocean/main.go $VERBOSE events wait $EVENT_ID
+./diocean $VERBOSE events wait $EVENT_ID
 
 rm new.output
 rm destroy.output
