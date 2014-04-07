@@ -41,6 +41,7 @@ Factor the HTTP Api into a re-useable library, separate the command line interfa
 
 Support json output in addition to tab delimited output.  This would be useful in conjunction with tools like [jq](http://stedolan.github.io/jq/).
 
+
 ### API Support
 
 - DONE Support a -wait flag for all operations that return an event id
@@ -65,7 +66,7 @@ Support json output in addition to tab delimited output.  This would be useful i
     - DONE Destroy Droplet
 
 - Regions
-    - *TODO* All Regions
+    - DONE All Regions
 
 - Images
     - DONE All Images

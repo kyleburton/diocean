@@ -164,6 +164,12 @@ func InitRoutingTable() {
 	})
 
 	RoutingTable = append(RoutingTable, &Route{
+    Pattern: []string{"images", ":image_id", ":region_id"},
+		Params:  make(map[string]string),
+		Handler: DoImageTransfer,
+	})
+
+	RoutingTable = append(RoutingTable, &Route{
 		Pattern: []string{"events", "show", ":event_id"},
 		Params:  make(map[string]string),
 		Handler: DoEventShow,
@@ -353,9 +359,12 @@ func DoImageShow (route *Route) {
   Client.DoImageShow(route.Params["image_id"])
 }
 
-
 func DoImageDestroy (route *Route) {
   Client.DoImageDestroy(route.Params["image_id"])
+}
+
+func DoImageTransfer (route *Route) {
+  Client.DoImageTransfer(route.Params["image_id"], route.Params["region_id"])
 }
 
 func DoEventShow (route *Route) {
@@ -377,8 +386,6 @@ func DoSshKeysLs (route *Route) {
 func DoSshFixKnownHosts (route *Route) {
   Client.DoSshFixKnownHosts()
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 

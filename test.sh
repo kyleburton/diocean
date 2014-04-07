@@ -12,32 +12,29 @@ VERBOSE=""
 #REGION=nyc2
 REGION=sfo1
 
-./diocean $VERBOSE droplets new test1 512mb ubuntu-13-10-x64 $REGION 20848 false false 2>&1 | tee new.output
+# create a droplet
+./diocean $VERBOSE -w droplets new test1 512mb ubuntu-13-10-x64 $REGION 20848 false false
 
-# id      name    image_id        size_id event_id
-# 1413427 test1   1505699 66      20770146
-EVENT_ID=$(tail -n 1 new.output | cut -f 5)
-
-# grab the event and the droplet_id
+# show that we have one
 ./diocean $VERBOSE droplets ls
 
+DROPLET_ID=$(./diocean droplets ls | tail -n 1 | cut -f1)
 
-# wait for the droplet to spin up
-./diocean $VERBOSE events wait $EVENT_ID
+# power off the droplet
+./diocean $VERBOSE -w droplets power-off $DROPLET_ID
+# take a snapshot
+./diocean $VERBOSE -w droplets snapshot $DROPLET_ID test-snapshot-1
 
 # destroy the droplet
 # get the droplet ID from the previous create 
-./diocean $VERBOSE -w droplets destroy 1390159 false 2>&1 | tee destroy.output
+./diocean $VERBOSE -w droplets destroy $DROPLET_ID false
 
-# event_id
-# 20770212
-EVENT_ID=$(tail -n 1 destroy.output)
+# delete the snapshot (image)
+IMAGE_ID=$(./diocean images ls | sort -n | grep false$ | tail -n 1 | cut -f1)
+./diocean $VERBOSE -w images destroy $IMAGE_ID
 
-# wait for the destroy to complete
-./diocean $VERBOSE events wait $EVENT_ID
 
 rm new.output
 rm destroy.output
 
-# root:$6$hTe5XKGO$nN8C92LtSGNer7syZQP1yLF0RPO5pXXkM9XyLqLnpbn0qyvtcAMceOX4leU2dK8PsAomEANngAOGVLE2xFAQo1:16165:0:99999:7:::
-
+./diocean $VERBOSE droplets ls
