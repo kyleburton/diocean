@@ -26,6 +26,7 @@ type CmdlineOptionsStruct struct {
 var CmdlineOptions CmdlineOptionsStruct
 
 type RouteHandler func (*Route)
+type RouteParameterCompletions func (*Route, string) []string
 
 type Route struct {
 	Pattern  []string
@@ -33,6 +34,7 @@ type Route struct {
 	Args     []string
 	Handler  RouteHandler
 	HelpText *string
+  CompletionsFn RouteParameterCompletions
 }
 
 var RoutingTable []*Route
@@ -131,9 +133,10 @@ func InitRoutingTable() {
 	})
 
 	RoutingTable = append(RoutingTable, &Route{
-		Pattern: []string{"droplets", "new", ":name", ":size", ":image", ":region", ":ssh_key_ids", ":private_networking", ":backups_enabled"},
-		Params:  make(map[string]string),
-		Handler: DoDropletsNewDroplet,
+		Pattern:       []string{"droplets", "new", ":name", ":size", ":image", ":region", ":ssh_key_ids", ":private_networking", ":backups_enabled"},
+		Params:        make(map[string]string),
+		Handler:       DoDropletsNewDroplet,
+    CompletionsFn: NewDropletParameterCompletions,
 	})
 
 	RoutingTable = append(RoutingTable, &Route{
@@ -300,7 +303,7 @@ func RoutePseudoMatches(route *Route, args []string) (*Route, bool) {
 		}
 
 		if strings.HasPrefix(part, ":") {
-			res.Params[part[1:]] = arg
+			res.Params[part] = arg
 			continue
 		}
 
@@ -408,6 +411,12 @@ func DoDropletsNewDroplet (route *Route) {
   )
 }
 
+func NewDropletParameterCompletions (route *Route, param string) []string {
+  fmt.Fprintf(os.Stderr, "NewDropletParameterCompletions: param=%s\n", param)
+  var words []string
+  return words
+}
+
 func DoDropletsDestroyDroplet (route *Route) {
   Client.DoDropletsDestroyDroplet(route.Params["droplet_id"], route.Params["scrub_data"])
 }
@@ -489,11 +498,19 @@ func FindCompletions (args []string) {
   }
   for _, route := range res {
     if len(args) > atIdx && len(route.Pattern) > atIdx+1 && args[atIdx] == route.Pattern[atIdx] {
-      words = AppendUnique(words, route.Pattern[atIdx+1])
+      word := route.Pattern[atIdx+1]
+      if strings.HasPrefix(word, ":") {
+        //fmt.Fprintf(os.Stderr, "ask the route")
+      }
+      words = AppendUnique(words, word)
       continue
     }
 
-    words = AppendUnique(words, route.Pattern[atIdx])
+    word := route.Pattern[atIdx]
+    if strings.HasPrefix(word, ":") {
+      //fmt.Fprintf(os.Stderr, "ask the route")
+    }
+    words = AppendUnique(words, word)
   }
   sort.Sort(ByString(words))
   fmt.Printf("%s\n", strings.Join(words, " "))
