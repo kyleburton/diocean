@@ -4,6 +4,7 @@ import (
   "flag"
   "os"
   "fmt"
+  "sort"
   "strings"
   "io/ioutil"
   "encoding/json"
@@ -17,8 +18,9 @@ type ConfigType map[string]string
 var Config ConfigType
 
 type CmdlineOptionsStruct struct {
-	Verbose       bool
-	WaitForEvents bool
+	CompletionCandidate bool
+	Verbose             bool
+	WaitForEvents       bool
 }
 
 var CmdlineOptions CmdlineOptionsStruct
@@ -267,6 +269,69 @@ func FindMatchingRoute(args []string) *Route {
 	return nil
 }
 
+func RoutePseudoMatches(route *Route, args []string) (*Route, bool) {
+	if CmdlineOptions.Verbose {
+		fmt.Fprintf(os.Stderr, "RoutePseudoMatches: %s args: %s\n", route, args)
+	}
+
+	var res *Route = &Route{
+		Pattern: route.Pattern,
+		Params:  make(map[string]string),
+		Handler: route.Handler,
+	}
+
+  var arg string
+  // args may be: ()
+  // args may be: (dr)
+  // args may be: (droplets)
+  // args may be: (droplets n)
+  // args may be: (droplets new)
+	for idx, part := range route.Pattern {
+    arg = ""
+    res.Args = make([]string, 0)
+
+    if len(args) > idx {
+		  arg = args[idx]
+      res.Args = args[idx:]
+    }
+
+		if CmdlineOptions.Verbose {
+			fmt.Fprintf(os.Stderr, "  part:%s arg:%s rest:%s\n", part, arg, res.Args)
+		}
+
+		if strings.HasPrefix(part, ":") {
+			res.Params[part[1:]] = arg
+			continue
+		}
+
+		if part == arg || strings.HasPrefix(part, arg) {
+			continue
+		}
+
+		if CmdlineOptions.Verbose {
+			fmt.Fprintf(os.Stderr, "  ran out of parts at idx=%d, no match\n", idx)
+		}
+
+		return nil, false
+	}
+
+	return res, true
+}
+
+
+func FindPotentialRoutes(args []string) []*Route {
+  matchingRoutes := make([]*Route, 0)
+
+	for _, route := range RoutingTable {
+		res, matched := RoutePseudoMatches(route, args)
+		if matched {
+			matchingRoutes = append(matchingRoutes, res)
+		}
+	}
+
+	return matchingRoutes
+}
+
 
 func InitConfig() bool {
 	file, e := ioutil.ReadFile(os.Getenv("HOME") + "/.digitalocean.json")
@@ -389,8 +454,58 @@ func DoSshFixKnownHosts (route *Route) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+func AppendUnique(elts []string, s string) []string {
+  for _, ele := range elts {
+    if ele == s {
+      return elts
+    }
+  }
+
+  return append(elts, s)
+}
+
+func StripColonPrefix (s string) string {
+  if strings.HasPrefix(s, ":") {
+    return s[1:]
+  }
+  return s
+}
+
+type ByString []string
+
+func (a ByString) Len() int              { return len(a) }
+func (a ByString) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByString) Less(i, j int) bool { return a[i] < a[j] }
+
+func FindCompletions (args []string) {
+
+  res := FindPotentialRoutes(args)
+  //fmt.Fprintf(os.Stderr, "FindCompletions: args[%d]='%s' res.len=%d\n",  len(args), args, len(res))
+  //fmt.Fprintf(os.Stderr, "  res=%s\n", res)
+  words := make([]string, 0)
+  atIdx := 0
+  if len(args) > 0 {
+    atIdx = len(args)-1
+  }
+  for _, route := range res {
+    if len(args) > atIdx && len(route.Pattern) > atIdx+1 && args[atIdx] == route.Pattern[atIdx] {
+      words = AppendUnique(words, route.Pattern[atIdx+1])
+      continue
+    }
+
+    words = AppendUnique(words, route.Pattern[atIdx])
+  }
+  sort.Sort(ByString(words))
+  fmt.Printf("%s\n", strings.Join(words, " "))
+  return
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+var DummyCompletion string = "DummyCompletion"
 
 func main() {
+	flag.BoolVar(&CmdlineOptions.CompletionCandidate, "cmplt", false, "Completion")
 	flag.BoolVar(&CmdlineOptions.Verbose, "v", false, "Verbose")
 	flag.BoolVar(&CmdlineOptions.WaitForEvents, "w", false, "For commands that return an event_id, wait for the event to complete.")
 	InitRoutingTable()
@@ -403,6 +518,16 @@ func main() {
 	if CmdlineOptions.Verbose {
 		fmt.Fprintf(os.Stderr, "Route: %s\n", route)
 	}
+
+	if CmdlineOptions.CompletionCandidate {
+    if len(flag.Args()) > 0 && flag.Args()[0] == "diocean" {
+      FindCompletions(flag.Args()[1:])
+    } else {
+      FindCompletions(flag.Args())
+    }
+		os.Exit(0)
+	}
+
 
 	if route == nil {
 		fmt.Fprintf(os.Stderr, "Error: unrecognized command: %s\n", flag.Args())
