@@ -41,6 +41,12 @@ Factor the HTTP Api into a re-useable library, separate the command line interfa
 
 Support json output in addition to tab delimited output.  This would be useful in conjunction with tools like [jq](http://stedolan.github.io/jq/).
 
+### Command Line Completion
+
+- DONE bash wrapper
+- DONE completion for route patterns
+- DONE parameter expansion (eg: "droplets new test1 <TAB>" should list the available sizes since that is the next parameter)
+
 
 ### API Support
 
