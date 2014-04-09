@@ -433,7 +433,7 @@ func DoDropletsNewDroplet (route *Route) {
 }
 
 type PerformCall func () interface {}
-func UseDiskCache (name string, maxAgeSeconds int64, fn PerformCall) interface{} {
+func UseDiskCache (name string, maxAgeSeconds int64, fn PerformCall) []byte {
   path := os.Getenv("HOME") + "/.digitalocean/cache"
   _, err := os.Stat(path)
   if err != nil && os.IsNotExist(err) {
@@ -465,14 +465,16 @@ func UseDiskCache (name string, maxAgeSeconds int64, fn PerformCall) interface{}
         os.Exit(1)
       }
 
-      res := make(map[string] interface{})
-      err = json.Unmarshal(body, &res)
-      if err != nil {
-        fmt.Fprintf(os.Stderr, "Error[json.Unmarshal(body)]: %s\n", err)
-        os.Exit(1)
-      }
+      return body
 
-      return res
+      //res := make(map[string] interface{})
+      //err = json.Unmarshal(body, &res)
+      //if err != nil {
+      //  fmt.Fprintf(os.Stderr, "Error[json.Unmarshal(body)]: %s\n", err)
+      //  os.Exit(1)
+      //}
+
+      //return res
     }
   }
 
@@ -489,7 +491,7 @@ func UseDiskCache (name string, maxAgeSeconds int64, fn PerformCall) interface{}
     fmt.Fprintf(os.Stderr, "Error[ioutil.WriteFile(%s,body, 0644)]: %s\n", cacheFile, err)
     os.Exit(1)
   }
-  return res
+  return body
 }
 
 func ParameterCompletions (route *Route, param, word string) []string {
@@ -504,14 +506,19 @@ func ParameterCompletions (route *Route, param, word string) []string {
     words = []string{word}
   case ":size":
     // this should be cached out to disk...
-    //resp := UseDiskCache( "DropletSizes", 600, func () interface{} { return Client.DropletSizes() }).(diocean.DropletSizesResponse)
-    resp := Client.DropletSizes()
+    // resp := Client.DropletSizes()
+    body := UseDiskCache( "DropletSizes", 600, func () interface{} { return Client.DropletSizes() })
+    var resp diocean.DropletSizesResponse
+    resp.Unmarshal(body)
     for _, info := range resp.Sizes {
       words = append(words, info.Slug)
     }
   case ":image":
     // this should be cached out to disk...
-    resp := Client.ImagesLs()
+    //resp := Client.ImagesLs()
+    body := UseDiskCache( "ImagesLs", 600, func () interface{} { return Client.ImagesLs() })
+    var resp diocean.ImagesResponse
+    resp.Unmarshal(body)
     for _, info := range resp.Images {
       var w string = ""
 
@@ -527,32 +534,44 @@ func ParameterCompletions (route *Route, param, word string) []string {
     }
   case ":image_id":
     // this should be cached out to disk...
-    resp := Client.ImagesLs()
+    // resp := Client.ImagesLs()
+    body := UseDiskCache( "ImagesLs", 600, func () interface{} { return Client.ImagesLs() })
+    var resp diocean.ImagesResponse
+    resp.Unmarshal(body)
     for _, info := range resp.Images {
       var w string = ""
       w = fmt.Sprintf("%.f", info.Id)
       words = append(words, w)
     }
   case ":region":
-    resp := Client.RegionsLs()
+    //resp := Client.RegionsLs()
+    body := UseDiskCache( "RegionsLs", 600, func () interface{} { return Client.RegionsLs() })
+    var resp diocean.RegionResponse
+    resp.Unmarshal(body)
     for _, region := range resp.Regions {
       words = append(words, region.Slug)
     }
   case ":region_id":
-    resp := Client.RegionsLs()
+    //resp := Client.RegionsLs()
+    body := UseDiskCache( "RegionsLs", 600, func () interface{} { return Client.RegionsLs() })
+    var resp diocean.RegionResponse
+    resp.Unmarshal(body)
     for _, region := range resp.Regions {
       words = append(words, fmt.Sprintf("%.f", region.Id))
     }
   case ":ssh_key_ids":
-    resp := Client.SshKeysLs()
+    //resp := Client.SshKeysLs()
+    body := UseDiskCache( "SshKeysLs", 600, func () interface{} { return Client.SshKeysLs() })
+    var resp diocean.SshKeysResponse
+    resp.Unmarshal(body)
     for _, info := range *resp.Ssh_keys {
       words = append(words, fmt.Sprintf("%.f", info.Id))
     }
   case ":droplet_id":
-    resp := Client.DropletsLs()
-    if CmdlineOptions.Verbose {
-      fmt.Fprintf(os.Stderr, "ParameterCompletions[%s~%s]: resp=%s\n", param, word, resp)
-    }
+    // resp := Client.DropletsLs()
+    body := UseDiskCache( "DropletsLs", 600, func () interface{} { return *Client.DropletsLs() })
+    var resp diocean.ActiveDropletsResponse
+    resp.Unmarshal(body)
     for _, info := range resp.Droplets {
       words = append(words, fmt.Sprintf("%.f", info.Id))
     }
