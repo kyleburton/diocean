@@ -430,10 +430,7 @@ func DoDropletsNewDroplet(route *Route) {
 	)
 }
 
-type PerformCall func() interface{}
-
-func UseDiskCache(name string, maxAgeSeconds int64, fn PerformCall) []byte {
-	path := os.Getenv("HOME") + "/.digitalocean/cache"
+func EnsureDirectory(path string) {
 	_, err := os.Stat(path)
 	if err != nil && os.IsNotExist(err) {
 		err = os.MkdirAll(path, 0755)
@@ -448,48 +445,80 @@ func UseDiskCache(name string, maxAgeSeconds int64, fn PerformCall) []byte {
 		os.Exit(1)
 	}
 
-	cacheFile := path + "/" + name + ".json"
+}
+
+func (self ConfigType) CacheFilePath(f string) string {
+	cachePath, hasCachePath := Config["CacheDirectory"]
+
+	if !hasCachePath {
+		cachePath = os.Getenv("HOME") + "/.digitalocean/cache"
+	}
+
+	EnsureDirectory(cachePath)
+
+	return cachePath + "/" + f
+}
+
+type PerformCall func() interface{}
+
+func ReadFromDiskCache(cacheFile string) (body []byte, age int64, existed bool, err error) {
 	finfo, err := os.Stat(cacheFile)
 	if err != nil && !os.IsNotExist(err) {
-		fmt.Fprintf(os.Stderr, "Error[Stat(%s)]: %s\n", cacheFile, err)
-		os.Exit(1)
+		return
 	}
 
-	if err == nil {
-		age := time.Now().Unix() - finfo.ModTime().Unix()
-		if age < maxAgeSeconds {
-			body, err := ioutil.ReadFile(cacheFile)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error[ioutil.ReadFile(%s)]: %s\n", cacheFile, err)
-				os.Exit(1)
-			}
-
-			return body
-
-			//res := make(map[string] interface{})
-			//err = json.Unmarshal(body, &res)
-			//if err != nil {
-			//  fmt.Fprintf(os.Stderr, "Error[json.Unmarshal(body)]: %s\n", err)
-			//  os.Exit(1)
-			//}
-
-			//return res
-		}
+	if os.IsNotExist(err) {
+		existed = false
+		err = nil
+		return
 	}
 
-	res := fn()
-	// cache it
-	body, err := json.Marshal(res)
+	existed = true
+
+	age = time.Now().Unix() - finfo.ModTime().Unix()
+	body, err = ioutil.ReadFile(cacheFile)
+	return
+}
+
+func SaveToDiskCache(cacheFile string, body []byte) error {
+	return ioutil.WriteFile(cacheFile, body, 0644)
+}
+
+func RemoveFromDiskCache(name string) error {
+	cacheFile := Config.CacheFilePath(name + ".json")
+  err := os.Remove(cacheFile)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error[json.Marshal(res)]: %s\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+		os.Exit(1)
+	}
+  return nil
+}
+
+func UseDiskCache(name string, maxAgeSeconds int64, fn PerformCall) []byte {
+	cacheFile := Config.CacheFilePath(name + ".json")
+
+	body, age, existed, err := ReadFromDiskCache(cacheFile)
+
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
 		os.Exit(1)
 	}
 
-	err = ioutil.WriteFile(cacheFile, body, 0644)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error[ioutil.WriteFile(%s,body, 0644)]: %s\n", cacheFile, err)
-		os.Exit(1)
+	if !existed || age > maxAgeSeconds {
+		// cache it
+		res := fn()
+    body, err := json.Marshal(res)
+	  if err != nil {
+		  fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+		  os.Exit(1)
+	  }
+		err = SaveToDiskCache(cacheFile, body)
+	  if err != nil {
+		  fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+		  os.Exit(1)
+	  }
 	}
+
 	return body
 }
 
@@ -669,13 +698,13 @@ func (a ByString) Len() int           { return len(a) }
 func (a ByString) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a ByString) Less(i, j int) bool { return a[i] < a[j] }
 
-func FindCompletions(args []string) {
-
-	res := FindPotentialRoutes(args)
+func FindCompletionWords(args []string) []string {
+  res := FindPotentialRoutes(args)
 	if CmdlineOptions.Verbose {
-		fmt.Fprintf(os.Stderr, "FindCompletions: args[%d]='%s' res.len=%d\n", len(args), args, len(res))
+		fmt.Fprintf(os.Stderr, "FindCompletionWords: args[%d]='%s' res.len=%d\n", len(args), args, len(res))
 		fmt.Fprintf(os.Stderr, "  res=%s\n", res)
 	}
+
 	words := make([]string, 0)
 	atIdx := 0
 	if len(args) > 0 {
@@ -691,6 +720,12 @@ func FindCompletions(args []string) {
 		words = ConcatUnique(words, route.CompletionsFor(atIdx, arg))
 	}
 	sort.Sort(ByString(words))
+
+  return words
+}
+
+func FindCompletions(args []string) {
+  words := FindCompletionWords(args)
 	if CmdlineOptions.Verbose {
 		fmt.Fprintf(os.Stderr, "FindCompletions words are: %s\n", strings.Join(words, ","))
 	}
@@ -703,6 +738,9 @@ func IsPatternParam(s string) bool {
 }
 
 func (self *Route) CompletionsFor(idx int, word string) []string {
+  if idx >= len(self.Pattern) {
+    return []string{}
+  }
 	part := self.Pattern[idx]
 
 	if CmdlineOptions.Verbose {
@@ -823,7 +861,7 @@ func main() {
 
 	if CmdlineOptions.CompletionCandidate {
 		// this is a hack
-		if len(flag.Args()) > 0 && flag.Args()[0] == "diocean" || flag.Args()[0] == "diocean" {
+		if len(flag.Args()) > 0 && (flag.Args()[0] == "diocean" || flag.Args()[0] == "diocean") {
 			FindCompletions(flag.Args()[1:])
 		} else {
 			FindCompletions(flag.Args())
