@@ -486,12 +486,12 @@ func SaveToDiskCache(cacheFile string, body []byte) error {
 
 func RemoveFromDiskCache(name string) error {
 	cacheFile := Config.CacheFilePath(name + ".json")
-  err := os.Remove(cacheFile)
+	err := os.Remove(cacheFile)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
 		os.Exit(1)
 	}
-  return nil
+	return nil
 }
 
 func UseDiskCache(name string, maxAgeSeconds int64, fn PerformCall) []byte {
@@ -507,16 +507,16 @@ func UseDiskCache(name string, maxAgeSeconds int64, fn PerformCall) []byte {
 	if !existed || age > maxAgeSeconds {
 		// cache it
 		res := fn()
-    body, err := json.Marshal(res)
-	  if err != nil {
-		  fmt.Fprintf(os.Stderr, "Error: %s\n", err)
-		  os.Exit(1)
-	  }
+		body, err := json.Marshal(res)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+			os.Exit(1)
+		}
 		err = SaveToDiskCache(cacheFile, body)
-	  if err != nil {
-		  fmt.Fprintf(os.Stderr, "Error: %s\n", err)
-		  os.Exit(1)
-	  }
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+			os.Exit(1)
+		}
 	}
 
 	return body
@@ -699,7 +699,7 @@ func (a ByString) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a ByString) Less(i, j int) bool { return a[i] < a[j] }
 
 func FindCompletionWords(args []string) []string {
-  res := FindPotentialRoutes(args)
+	res := FindPotentialRoutes(args)
 	if CmdlineOptions.Verbose {
 		fmt.Fprintf(os.Stderr, "FindCompletionWords: args[%d]='%s' res.len=%d\n", len(args), args, len(res))
 		fmt.Fprintf(os.Stderr, "  res=%s\n", res)
@@ -721,11 +721,11 @@ func FindCompletionWords(args []string) []string {
 	}
 	sort.Sort(ByString(words))
 
-  return words
+	return words
 }
 
 func FindCompletions(args []string) {
-  words := FindCompletionWords(args)
+	words := FindCompletionWords(args)
 	if CmdlineOptions.Verbose {
 		fmt.Fprintf(os.Stderr, "FindCompletions words are: %s\n", strings.Join(words, ","))
 	}
@@ -738,9 +738,9 @@ func IsPatternParam(s string) bool {
 }
 
 func (self *Route) CompletionsFor(idx int, word string) []string {
-  if idx >= len(self.Pattern) {
-    return []string{}
-  }
+	if idx >= len(self.Pattern) {
+		return []string{}
+	}
 	part := self.Pattern[idx]
 
 	if CmdlineOptions.Verbose {

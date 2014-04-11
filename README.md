@@ -106,12 +106,17 @@ Support json output in addition to tab delimited output.  This would be useful i
     - DONE Show Event
     - DONE Wait For Event (percentage=100)
 
-### Roadmap:
+### Tests
 
-- re-implement DoDropletsLsDroplet using structs
-- implement 'events wait :event id'
+- _IN PROGRESS_ Route.CompletionsFor
+- _IN PROGRESS_ FindCompletionWords
+- *TODO* ParameterCompletions
+- *TODO* AppendUnique
+- *TODO* STripColonPrefix
+- *TODO* ReadFromDiskCache
+- *TODO* UseDiskCache
 
-### References
+## References
 
 - http://blog.equanimity.nl/blog/2013/05/29/a-beginners-guide-to-erlang/
 - https://developers.digitalocean.com/sizes/

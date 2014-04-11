@@ -1,29 +1,32 @@
 package main
 
 import (
-  "strings"
-  "testing"
+	"strings"
+	"testing"
 )
+
+////////////////////////////////////////////////////////////////////////////////
+// helpers
 
 var MockApiResponses map[string]string = map[string]string{
 	"DropletSizes": `{"Status":"OK","Sizes":[{"Id":66,"Name":"512MB","Slug":"512mb"},{"Id":63,"Name":"1GB","Slug":"1gb"},{"Id":62,"Name":"2GB","Slug":"2gb"},{"Id":64,"Name":"4GB","Slug":"4gb"},{"Id":65,"Name":"8GB","Slug":"8gb"},{"Id":61,"Name":"16GB","Slug":"16gb"},{"Id":60,"Name":"32GB","Slug":"32gb"},{"Id":70,"Name":"48GB","Slug":"48gb"},{"Id":69,"Name":"64GB","Slug":"64gb"}]}`,
 }
 
-func StringMapKeys (m map[string]string) []string {
-  keys := make([]string, 0)
-  for k := range m {
-    keys = append(keys, k)
-  }
-  return keys
+func StringMapKeys(m map[string]string) []string {
+	keys := make([]string, 0)
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
 }
 
 func CreateMockCachedResponse(t *testing.T, name string) {
-  content, exists := MockApiResponses[name]
-  if !exists {
-    t.Errorf("Error: invalid MockApiResponse: %s => %s", name, StringMapKeys(MockApiResponses))
-  }
-  t.Logf("CreateMockCachedResponse(*, %s) => %s", name, len(content))
-  SaveToDiskCache(Config.CacheFilePath(name + ".json"), []byte(content))
+	content, exists := MockApiResponses[name]
+	if !exists {
+		t.Errorf("Error: invalid MockApiResponse: %s => %s", name, StringMapKeys(MockApiResponses))
+	}
+	t.Logf("CreateMockCachedResponse(*, %s) => %s", name, len(content))
+	SaveToDiskCache(Config.CacheFilePath(name+".json"), []byte(content))
 }
 
 func StringArraysMatch(left, right []string) bool {
@@ -49,122 +52,95 @@ type CompletionsForTestCase struct {
 	Expected []string
 }
 
-var CompletionTestCases = []*CompletionsForTestCase{
-	&CompletionsForTestCase{
-		Route: &Route{
-			Pattern: []string{"sizes", "ls"},
-			Params:  make(map[string]string),
-			Handler: DropletSizesLs,
-		},
-		AtIdx:    0,
-		Word:     "",
-		Expected: []string{"sizes"},
-	},
-	&CompletionsForTestCase{
-		Route: &Route{
-			Pattern: []string{"sizes", "ls"},
-			Params:  make(map[string]string),
-			Handler: DropletSizesLs,
-		},
-		AtIdx:    0,
-		Word:     "s",
-		Expected: []string{"sizes"},
-	},
-	&CompletionsForTestCase{
-		Route: &Route{
-			Pattern: []string{"sizes", "ls"},
-			Params:  make(map[string]string),
-			Handler: DropletSizesLs,
-		},
-		AtIdx:    1,
-		Word:     "",
-		Expected: []string{"ls"},
-	},
-	&CompletionsForTestCase{
-		Route: &Route{
-			Pattern: []string{"sizes", "ls"},
-			Params:  make(map[string]string),
-			Handler: DropletSizesLs,
-		},
-		AtIdx:    0,
-		Word:     "foo",
-		Expected: []string{},
-	},
-	&CompletionsForTestCase{
-		Route: &Route{
-			Pattern: []string{"sizes", "ls"},
-			Params:  make(map[string]string),
-			Handler: DropletSizesLs,
-		},
-		AtIdx:    2,
-		Word:     " ",
-		Expected: []string{},
-	},
-	&CompletionsForTestCase{
-		Route: &Route{
-			Pattern: []string{"sizes", "ls"},
-			Params:  make(map[string]string),
-			Handler: DropletSizesLs,
-		},
-		AtIdx:    2,
-		Word:     "l",
-		Expected: []string{},
-	},
-	&CompletionsForTestCase{
-		Route: &Route{
-			Pattern: []string{"sizes", "ls"},
-			Params:  make(map[string]string),
-			Handler: DropletSizesLs,
-		},
-		AtIdx:    2,
-		Word:     "ls",
-		Expected: []string{},
-	},
+func SArray(args ...string) []string {
+	return args
 }
 
-func TestCompletionsFor (t *testing.T) {
-  CreateMockCachedResponse(t, "DropletSizes")
+func MakeRouteCompletionTestCase(h RouteHandler, idx int, word string, pattern, expected []string) *CompletionsForTestCase {
+	return &CompletionsForTestCase{
+		Route: &Route{
+			Pattern: pattern,
+			Params:  make(map[string]string),
+			Handler: h,
+		},
+		AtIdx:    idx,
+		Word:     word,
+		Expected: expected,
+	}
+}
+
+var CompletionTestCases = []*CompletionsForTestCase{
+	// should match pattern[0]
+	MakeRouteCompletionTestCase(DropletSizesLs, 0, "", SArray("sizes", "ls"), SArray("sizes")),
+	// should match pattern[0]
+	MakeRouteCompletionTestCase(DropletSizesLs, 0, "s", SArray("sizes", "ls"), SArray("sizes")),
+	// should match pattern[1]
+	MakeRouteCompletionTestCase(DropletSizesLs, 1, "", SArray("sizes", "ls"), SArray("ls")),
+	// no match
+	MakeRouteCompletionTestCase(DropletSizesLs, 0, "foo", SArray("sizes", "ls"), SArray()),
+	// past the end
+	MakeRouteCompletionTestCase(DropletSizesLs, 2, "", SArray("sizes", "ls"), SArray()),
+	// past the end
+	MakeRouteCompletionTestCase(DropletSizesLs, 2, "l", SArray("sizes", "ls"), SArray()),
+	// past the end
+	MakeRouteCompletionTestCase(DropletSizesLs, 2, "ls", SArray("sizes", "ls"), SArray()),
+}
+
+func (self *CompletionsForTestCase) Completions(idx int, word string) []string {
+	return self.Route.CompletionsFor(self.AtIdx, self.Word)
+}
+
+func (self *CompletionsForTestCase) Run(t *testing.T) {
+	completions := self.Completions(self.AtIdx, self.Word)
+	t.Logf("TestCompletionsFor: route.CompletionsFor(%s, '%s') => %s", self.AtIdx, self.Word, completions)
+	if !StringArraysMatch(self.Expected, completions) {
+		t.Errorf("route.CompletionsFor(%s,'%s') :: %s != %s", self.AtIdx, self.Word, self.Expected, completions)
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+func TestCompletionsFor(t *testing.T) {
+	CreateMockCachedResponse(t, "DropletSizes")
 	for _, testCase := range CompletionTestCases {
-		completions := testCase.Route.CompletionsFor(testCase.AtIdx, testCase.Word)
-		t.Logf("TestCompletionsFor: route.CompletionsFor(%s, '%s') => %s", testCase.AtIdx, testCase.Word, completions)
-		if !StringArraysMatch(testCase.Expected, completions) {
-			t.Errorf("route.CompletionsFor(%s,'%s') :: %s != %s", testCase.AtIdx, testCase.Word, testCase.Expected, completions)
-		}
+		testCase.Run(t)
 	}
 
-  RemoveFromDiskCache("DropletSizes")
+	RemoveFromDiskCache("DropletSizes")
 }
 
-func TestFindCompletions (t *testing.T) {
-  // CmdlineOptions.Verbose = true
-  InitRoutingTable()
-  args := []string{}
-  words := FindCompletionWords(args)
-  t.Logf("TestFindCompletions: args=%s words=%s", args, strings.Join(words, ", "))
-  expected := []string {
-    "droplets", "events", "help", "images", "regions", "sizes", "ssh", "ssh-keys",
-  }
-  if !StringArraysMatch(expected, words) {
-    t.Errorf("FindCompletionWords(%s) :: %s != %s", args, words, expected)
-  }
+func TestFindCompletions(t *testing.T) {
+	// CmdlineOptions.Verbose = true
+	InitRoutingTable()
 
-  args  = []string{"dr"}
-  words = FindCompletionWords(args)
-  t.Logf("TestFindCompletions: args=%s words=%s", args, strings.Join(words, ", "))
-  expected = []string {
-    "droplets",
-  }
-  if !StringArraysMatch(expected, words) {
-    t.Errorf("FindCompletionWords(%s) :: %s != %s", args, words, expected)
-  }
+  //
+	args := []string{}
+	words := FindCompletionWords(args)
+	t.Logf("TestFindCompletions: args=%s words=%s", args, strings.Join(words, ", "))
+	expected := []string{
+		"droplets", "events", "help", "images", "regions", "sizes", "ssh", "ssh-keys",
+	}
+	if !StringArraysMatch(expected, words) {
+		t.Errorf("FindCompletionWords(%s) :: %s != %s", args, words, expected)
+	}
 
-  return
-  // TODO this test fails, it should not return anything since the route fully matches
-  args  = []string{"droplets", "ls"}
-  words = FindCompletionWords(args)
-  t.Logf("TestFindCompletions: args=%s words=%s", args, strings.Join(words, ", "))
-  expected = []string { }
-  if !StringArraysMatch(expected, words) {
-    t.Errorf("FindCompletionWords(%s) :: %s != %s", args, words, expected)
-  }
+	args = []string{"dr"}
+	words = FindCompletionWords(args)
+	t.Logf("TestFindCompletions: args=%s words=%s", args, strings.Join(words, ", "))
+	expected = []string{
+		"droplets",
+	}
+	if !StringArraysMatch(expected, words) {
+		t.Errorf("FindCompletionWords(%s) :: %s != %s", args, words, expected)
+	}
+
+	return
+	// TODO this test fails, it should not return anything since the route fully matches
+	args = []string{"droplets", "ls"}
+	words = FindCompletionWords(args)
+	t.Logf("TestFindCompletions: args=%s words=%s", args, strings.Join(words, ", "))
+	expected = []string{}
+	if !StringArraysMatch(expected, words) {
+		t.Errorf("FindCompletionWords(%s) :: %s != %s", args, words, expected)
+	}
 }
