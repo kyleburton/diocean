@@ -10,6 +10,7 @@ import (
 
 var MockApiResponses map[string]string = map[string]string{
 	"DropletSizes": `{"Status":"OK","Sizes":[{"Id":66,"Name":"512MB","Slug":"512mb"},{"Id":63,"Name":"1GB","Slug":"1gb"},{"Id":62,"Name":"2GB","Slug":"2gb"},{"Id":64,"Name":"4GB","Slug":"4gb"},{"Id":65,"Name":"8GB","Slug":"8gb"},{"Id":61,"Name":"16GB","Slug":"16gb"},{"Id":60,"Name":"32GB","Slug":"32gb"},{"Id":70,"Name":"48GB","Slug":"48gb"},{"Id":69,"Name":"64GB","Slug":"64gb"}]}`,
+  "RegionsLs": `{"Status":"OK","Regions":[{"Id":3,"Name":"San Francisco 1","Slug":"sfo1"},{"Id":4,"Name":"New York 2","Slug":"nyc2"},{"Id":5,"Name":"Amsterdam 2","Slug":"ams2"},{"Id":6,"Name":"Singapore 1","Slug":"sgp1"}]}`,
 }
 
 func StringMapKeys(m map[string]string) []string {
@@ -134,12 +135,14 @@ func TestFindCompletions(t *testing.T) {
 		t.Errorf("FindCompletionWords(%s) :: %s != %s", args, words, expected)
 	}
 
-	return
+	//return
 	// TODO this test fails, it should not return anything since the route fully matches
-	args = []string{"droplets", "ls"}
+	CreateMockCachedResponse(t, "DropletSizes")
+	CreateMockCachedResponse(t, "RegionsLs")
+	args = []string{"droplets", "new", "test1"}
 	words = FindCompletionWords(args)
 	t.Logf("TestFindCompletions: args=%s words=%s", args, strings.Join(words, ", "))
-	expected = []string{}
+	expected = []string{"16gb", "1gb", "2gb", "32gb", "48gb", "4gb", "512mb", "64gb", "8gb"}
 	if !StringArraysMatch(expected, words) {
 		t.Errorf("FindCompletionWords(%s) :: %s != %s", args, words, expected)
 	}
