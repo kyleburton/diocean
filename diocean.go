@@ -213,13 +213,6 @@ func InitRoutingTable() {
 		Handler: DoRegionsLs,
 	})
 
- 	RoutingTable = append(RoutingTable, &Route{
-		Pattern: []string{"ssh", ":droplet_name"},
-		Params:  make(map[string]string),
-		Handler: DoSshToDroplet,
-    CompletionsFn: ParameterCompletions,
-	})
-
 	RoutingTable = append(RoutingTable, &Route{
 		Pattern: []string{"ssh-keys", "ls"},
 		Params:  make(map[string]string),
@@ -230,6 +223,13 @@ func InitRoutingTable() {
 		Pattern: []string{"ssh", "fix-known-hosts"},
 		Params:  make(map[string]string),
 		Handler: DoSshFixKnownHosts,
+	})
+
+	RoutingTable = append(RoutingTable, &Route{
+		Pattern: []string{"ssh", ":droplet_name"},
+		Params:  make(map[string]string),
+		Handler: DoSshToDroplet,
+    CompletionsFn: ParameterCompletions,
 	})
 
 	RoutingTable = append(RoutingTable, &Route{
