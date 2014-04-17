@@ -113,7 +113,7 @@ func TestFindCompletions(t *testing.T) {
 	// CmdlineOptions.Verbose = true
 	InitRoutingTable()
 
-  //
+	//
 	args := []string{}
 	words := FindCompletionWords(args)
 	t.Logf("TestFindCompletions: args=%s words=%s", args, strings.Join(words, ", "))

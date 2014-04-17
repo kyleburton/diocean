@@ -7,6 +7,7 @@ import (
 	"github.com/kyleburton/diocean-go"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -19,6 +20,7 @@ type ConfigType map[string]string
 var Config ConfigType
 
 type CmdlineOptionsStruct struct {
+	ConfigPath          string
 	CompletionCandidate bool
 	Verbose             bool
 	WaitForEvents       bool
@@ -356,7 +358,7 @@ func FindPotentialRoutes(args []string) []*Route {
 }
 
 func InitConfig() bool {
-	file, e := ioutil.ReadFile(os.Getenv("HOME") + "/.digitalocean.json")
+	file, e := ioutil.ReadFile(CmdlineOptions.ConfigPath)
 	if e != nil {
 		fmt.Fprintf(os.Stderr, "File error: %v\n", e)
 		return false
@@ -833,6 +835,16 @@ func (self *Route) CompletionsFor(idx int, word string) []string {
 var DummyCompletion string = "DummyCompletion"
 
 func main() {
+	configPath := os.Getenv("DIOCEAN_CONFIG")
+	if configPath == "" {
+		configPath = filepath.Join(os.Getenv("HOME"), ".digitalocean.json")
+	}
+
+	flag.StringVar(&CmdlineOptions.ConfigPath,
+		"c",
+		configPath,
+		"Specify Configuration file path",
+	)
 	flag.BoolVar(&CmdlineOptions.CompletionCandidate, "cmplt", false, "Completion")
 	flag.BoolVar(&CmdlineOptions.Verbose, "v", false, "Verbose")
 	flag.BoolVar(&CmdlineOptions.WaitForEvents, "w", false, "For commands that return an event_id, wait for the event to complete.")
