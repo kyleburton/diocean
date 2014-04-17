@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strings"
 	"time"
+  "syscall"
 )
 
 var Client *diocean.DioceanClient
@@ -224,6 +225,13 @@ func InitRoutingTable() {
 		Pattern: []string{"ssh", "fix-known-hosts"},
 		Params:  make(map[string]string),
 		Handler: DoSshFixKnownHosts,
+	})
+
+	RoutingTable = append(RoutingTable, &Route{
+		Pattern: []string{"ssh", ":droplet_name"},
+		Params:  make(map[string]string),
+		Handler: DoSshToDroplet,
+    CompletionsFn: ParameterCompletions,
 	})
 
 	RoutingTable = append(RoutingTable, &Route{
@@ -605,6 +613,14 @@ func ParameterCompletions(route *Route, param, word string) []string {
 		for _, info := range resp.Droplets {
 			words = append(words, fmt.Sprintf("%.f", info.Id))
 		}
+  case ":droplet_name":
+    // resp := Client.DropletsLs()
+    body := UseDiskCache( "DropletsLs", 600, func () interface{} { return *Client.DropletsLs() })
+    var resp diocean.ActiveDropletsResponse
+    resp.Unmarshal(body)
+    for _, info := range resp.Droplets {
+      words = append(words, info.Name)
+    }
 	case ":private_networking":
 		words = []string{"true", "false"}
 	case ":backups_enabled":
@@ -652,6 +668,33 @@ func DoRegionsLs(route *Route) {
 func DoSshKeysLs(route *Route) {
 	Client.DoSshKeysLs()
 }
+
+func FindDropletByName (self *diocean.DioceanClient, name string) *diocean.DropletInfo {
+  resp := self.DropletsLs()
+  for _, droplet := range resp.Droplets {
+    if name == droplet.Name {
+      return &droplet
+    }
+  }
+  return nil
+}
+
+func DoSshToDroplet (route *Route) {
+  droplet := FindDropletByName(Client, route.Params["droplet_name"])
+  fmt.Printf("DoSshToDroplet: %s\n", droplet)
+  if droplet == nil { 
+		fmt.Fprintf(os.Stderr, "Droplet name not found\n")
+		os.Exit(1)
+  }
+
+	err := syscall.Exec("/usr/bin/ssh", []string{"ssh", "root@" + droplet.Ip_address}, syscall.Environ())
+
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error executing ssh cmd: %s\n", err)
+		os.Exit(1)
+	}
+}
+
 
 func DoSshFixKnownHosts(route *Route) {
 	Client.DoSshFixKnownHosts()
