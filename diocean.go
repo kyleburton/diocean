@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
   "syscall"
+  "strconv"
 )
 
 var Client *diocean.DioceanClient
@@ -20,11 +21,64 @@ type ConfigType map[string]string
 
 var Config ConfigType
 
+type TrackedStringFlag struct {
+  Value string
+  IsSet bool
+}
+
+func (self *TrackedStringFlag) String () string {
+  return self.Value
+}
+
+func (self *TrackedStringFlag) Set (s string) error {
+  self.Value = s
+  self.IsSet = true
+  return nil
+}
+
+type TrackedBoolFlag struct {
+  Value bool
+  IsSet bool
+}
+
+func (self *TrackedBoolFlag) String () string {
+  return fmt.Sprintf("%t", self.Value)
+}
+
+func (self *TrackedBoolFlag) Set (s string) error {
+  self.Value = s == "true"
+  self.IsSet = true
+  return nil
+}
+
+type TrackedIntFlag struct {
+  Value int
+  IsSet bool
+}
+
+func (self *TrackedIntFlag) String () string {
+  return fmt.Sprintf("%d", self.Value)
+}
+
+func (self *TrackedIntFlag) Set (s string) error {
+  ii, err := strconv.Atoi(s)
+  if err != nil {
+    panic(err)
+  }
+  self.Value = ii
+  self.IsSet = true
+  return nil
+}
+
+
 type CmdlineOptionsStruct struct {
 	ConfigPath          string
 	CompletionCandidate bool
 	Verbose             bool
 	WaitForEvents       bool
+	UseDiskCache        bool
+  CachePath           TrackedStringFlag
+  CacheMaxSeconds     TrackedIntFlag
 }
 
 var CmdlineOptions CmdlineOptionsStruct
@@ -457,12 +511,21 @@ func EnsureDirectory(path string) {
 
 }
 
+// cache.path flag overrides
+// config file overrides
+// default: ~/.digitalocean/cache
 func (self ConfigType) CacheFilePath(f string) string {
-	cachePath, hasCachePath := Config["CacheDirectory"]
+  var cachePath string
 
-	if !hasCachePath {
-		cachePath = os.Getenv("HOME") + "/.digitalocean/cache"
-	}
+  if CmdlineOptions.CachePath.IsSet {
+    cachePath = CmdlineOptions.CachePath.Value
+  } else {
+    var hasCachePath bool
+    cachePath, hasCachePath = Config["CacheDirectory"]
+    if !hasCachePath {
+      cachePath = os.Getenv("HOME") + "/.digitalocean/cache"
+    }
+  }
 
 	EnsureDirectory(cachePath)
 
@@ -504,7 +567,24 @@ func RemoveFromDiskCache(name string) error {
 	return nil
 }
 
-func UseDiskCache(name string, maxAgeSeconds int64, fn PerformCall) []byte {
+func CacheMaxSeconds () int {
+  if CmdlineOptions.CacheMaxSeconds.IsSet {
+    return CmdlineOptions.CacheMaxSeconds.Value
+  }
+
+  nn, isSet := Config["CacheMaxSeconds"]
+  if isSet {
+    ii, err := strconv.Atoi(nn)
+    if err != nil {
+      panic(err)
+    }
+    return ii
+  }
+
+  return 600
+}
+
+func UseDiskCache(name string, maxAgeSeconds int, fn PerformCall) []byte {
 	cacheFile := Config.CacheFilePath(name + ".json")
 
 	body, age, existed, err := ReadFromDiskCache(cacheFile)
@@ -514,7 +594,7 @@ func UseDiskCache(name string, maxAgeSeconds int64, fn PerformCall) []byte {
 		os.Exit(1)
 	}
 
-	if !existed || age > maxAgeSeconds {
+	if !existed || age > int64(maxAgeSeconds) {
 		// cache it
 		res := fn()
 		body, err := json.Marshal(res)
@@ -545,7 +625,7 @@ func ParameterCompletions(route *Route, param, word string) []string {
 	case ":size":
 		// this should be cached out to disk...
 		// resp := Client.DropletSizes()
-		body := UseDiskCache("DropletSizes", 600, func() interface{} { return Client.DropletSizes() })
+		body := UseDiskCache("DropletSizes", CacheMaxSeconds(), func() interface{} { return Client.DropletSizes() })
 		var resp diocean.DropletSizesResponse
 		resp.Unmarshal(body)
 		for _, info := range resp.Sizes {
@@ -554,7 +634,7 @@ func ParameterCompletions(route *Route, param, word string) []string {
 	case ":image":
 		// this should be cached out to disk...
 		//resp := Client.ImagesLs()
-		body := UseDiskCache("ImagesLs", 600, func() interface{} { return Client.ImagesLs() })
+		body := UseDiskCache("ImagesLs", CacheMaxSeconds(), func() interface{} { return Client.ImagesLs() })
 		var resp diocean.ImagesResponse
 		resp.Unmarshal(body)
 		for _, info := range resp.Images {
@@ -573,7 +653,7 @@ func ParameterCompletions(route *Route, param, word string) []string {
 	case ":image_id":
 		// this should be cached out to disk...
 		// resp := Client.ImagesLs()
-		body := UseDiskCache("ImagesLs", 600, func() interface{} { return Client.ImagesLs() })
+		body := UseDiskCache("ImagesLs", CacheMaxSeconds(), func() interface{} { return Client.ImagesLs() })
 		var resp diocean.ImagesResponse
 		resp.Unmarshal(body)
 		for _, info := range resp.Images {
@@ -583,7 +663,7 @@ func ParameterCompletions(route *Route, param, word string) []string {
 		}
 	case ":region":
 		//resp := Client.RegionsLs()
-		body := UseDiskCache("RegionsLs", 600, func() interface{} { return Client.RegionsLs() })
+		body := UseDiskCache("RegionsLs", CacheMaxSeconds(), func() interface{} { return Client.RegionsLs() })
 		var resp diocean.RegionResponse
 		resp.Unmarshal(body)
 		for _, region := range resp.Regions {
@@ -591,7 +671,7 @@ func ParameterCompletions(route *Route, param, word string) []string {
 		}
 	case ":region_id":
 		//resp := Client.RegionsLs()
-		body := UseDiskCache("RegionsLs", 600, func() interface{} { return Client.RegionsLs() })
+		body := UseDiskCache("RegionsLs", CacheMaxSeconds(), func() interface{} { return Client.RegionsLs() })
 		var resp diocean.RegionResponse
 		resp.Unmarshal(body)
 		for _, region := range resp.Regions {
@@ -599,7 +679,7 @@ func ParameterCompletions(route *Route, param, word string) []string {
 		}
 	case ":ssh_key_ids":
 		//resp := Client.SshKeysLs()
-		body := UseDiskCache("SshKeysLs", 600, func() interface{} { return Client.SshKeysLs() })
+		body := UseDiskCache("SshKeysLs", CacheMaxSeconds(), func() interface{} { return Client.SshKeysLs() })
 		var resp diocean.SshKeysResponse
 		resp.Unmarshal(body)
 		for _, info := range *resp.Ssh_keys {
@@ -607,7 +687,7 @@ func ParameterCompletions(route *Route, param, word string) []string {
 		}
 	case ":droplet_id":
 		// resp := Client.DropletsLs()
-		body := UseDiskCache("DropletsLs", 600, func() interface{} { return *Client.DropletsLs() })
+		body := UseDiskCache("DropletsLs", CacheMaxSeconds(), func() interface{} { return *Client.DropletsLs() })
 		var resp diocean.ActiveDropletsResponse
 		resp.Unmarshal(body)
 		for _, info := range resp.Droplets {
@@ -615,7 +695,7 @@ func ParameterCompletions(route *Route, param, word string) []string {
 		}
   case ":droplet_name":
     // resp := Client.DropletsLs()
-    body := UseDiskCache( "DropletsLs", 600, func () interface{} { return *Client.DropletsLs() })
+    body := UseDiskCache( "DropletsLs", CacheMaxSeconds(), func () interface{} { return *Client.DropletsLs() })
     var resp diocean.ActiveDropletsResponse
     resp.Unmarshal(body)
     for _, info := range resp.Droplets {
@@ -889,8 +969,12 @@ func main() {
 		"Specify Configuration file path",
 	)
 	flag.BoolVar(&CmdlineOptions.CompletionCandidate, "cmplt", false, "Completion")
-	flag.BoolVar(&CmdlineOptions.Verbose, "v", false, "Verbose")
+	flag.BoolVar(&CmdlineOptions.Verbose,       "v", false, "Verbose")
 	flag.BoolVar(&CmdlineOptions.WaitForEvents, "w", false, "For commands that return an event_id, wait for the event to complete.")
+	flag.BoolVar(&CmdlineOptions.UseDiskCache,   "cache.on", true, "Use an on-disk cache to speed up common API responses.")
+	flag.Var(&CmdlineOptions.CacheMaxSeconds, "cache.age",  "Maximum time in seconds to cache responses.")
+  flag.Var(&CmdlineOptions.CachePath,    "cache.path", "Directory to use for disk cache (default=~/.digitalocean/cache)")
+
 	InitRoutingTable()
 	flag.Parse()
 	route := FindMatchingRoute(flag.Args())
